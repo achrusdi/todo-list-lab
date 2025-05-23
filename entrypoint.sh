@@ -1,12 +1,21 @@
-#!/bin/sh
+#!/bin/bash
+set -e
 
-# Jalankan migration dan storage:link saat container start
-php artisan optimize:clear
+# Copy .env if it exists in a mounted volume
+if [ ! -f .env ] && [ -f .env.production ]; then
+    cp .env.production .env
+fi
+
+if [ -z "$APP_KEY" ]; then
+  php artisan key:generate
+fi
+
+# Run Laravel optimizations
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
-php artisan storage:link
-php artisan migrate --force
+php artisan storage:link || true
+php artisan migrate --force || true
 
-# Jalankan php-fpm
-exec php-fpm
+
+exec "$@"

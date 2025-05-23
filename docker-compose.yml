@@ -1,46 +1,48 @@
 version: '3.8'
 
 services:
-  app:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-    container_name: laravel_app
-    entrypoint: ["/var/www/entrypoint.sh"]
-    working_dir: /var/www
-    networks:
-      - laravel
-    depends_on:
-      - db
+    app:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        volumes:
+            - app-storage:/var/www/storage
+            - app-bootstrap:/var/www/bootstrap/cache
+        depends_on:
+            - db
+        restart: unless-stopped
+        networks:
+            - laravel
 
-  webserver:
-    image: nginx:alpine
-    container_name: nginx_server
-    ports:
-      - "80:80"
-    volumes:
-      - ./public:/var/www/public:ro
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - app
-    networks:
-      - laravel
+    db:
+        image: postgres:17
+        restart: unless-stopped
+        environment:
+            POSTGRES_DB: ${DB_DATABASE}
+            POSTGRES_USER: ${DB_USERNAME}
+            POSTGRES_PASSWORD: ${DB_PASSWORD}
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+        networks:
+            - laravel
 
-  db:
-    image: postgres:15
-    container_name: postgres_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: laravel
-      POSTGRES_USER: laravel
-      POSTGRES_PASSWORD: secret
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - laravel
+    nginx:
+        image: nginx:stable-alpine
+        ports:
+            - "80:80"
+        volumes:
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+        depends_on:
+            - app
+        restart: unless-stopped
+        networks:
+            - laravel
 
 networks:
-  laravel:
+    laravel:
+
 
 volumes:
-  pgdata:
+    app-storage:
+    app-bootstrap:
+    pgdata:
